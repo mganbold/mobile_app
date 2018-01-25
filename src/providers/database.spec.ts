@@ -83,4 +83,40 @@ describe("app/providers/database", () => {
       });
     });
   });
+
+  describe("getMetersForOrg()", () => {
+    let subscription: Subscription | null;
+
+    afterEach(() => {
+      if (subscription) {
+        subscription.unsubscribe();
+        subscription = null;
+      }
+    });
+
+    it("returns an array of meters", (done) => {
+      const spyGetMeters = spyOn(dbProvider as any, "_getMeters").and.returnValue("foo");
+      const orgRef: any = {
+        child: function(uid) {
+          return this;
+        },
+        once: function(value) {
+          return Promise.resolve([
+            {
+              val: () => {
+                return { _meters: { _gas: 100, _power: 200, _solar: 300, _water: 400 } };
+              }
+            }
+          ]);
+        }
+      };
+      const ref = spyOn(dbProvider as any, "dbRef").and.returnValue(orgRef);
+
+      subscription = dbProvider.getOrgPathForUser("id").subscribe(data => {
+        expect(data).toEqual("bar");
+
+        done();
+      });
+    });
+  });
 });
