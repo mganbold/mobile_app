@@ -217,4 +217,85 @@ describe("app/providers/database", () => {
       });
     });
   });
+
+  describe("deleteMeter()", () => {
+    let subscription: Subscription | null;
+
+    afterEach(() => {
+      if (subscription) {
+        subscription.unsubscribe();
+        subscription = null;
+      }
+    });
+
+    it("calls child() function with correct path and then remove() function", (done) => {
+      const user = { uid: 150 };
+      const meter = { _utilityType: "test", _name: "bar" };
+      const providerRef: any = {
+        child: function(uid) {
+          return this;
+        },
+        remove: function(value) {
+          return Promise.resolve();
+        }
+      };
+      const spyRef = spyOn(dbProvider as any, "dbRef").and.returnValue(providerRef);
+      const spyRemove = spyOn(providerRef, "remove").and.callThrough();
+      const spyChild = spyOn(providerRef, "child").and.callThrough();
+      const path = `Vutiliti/VutilitiCP/Residential/${user.uid}/Building1/_meters/_${meter._utilityType}/${meter._name}`;
+
+      subscription = dbProvider.deleteMeter(meter as any, user as any).subscribe(data => {
+        expect(data).toEqual(meter as any);
+        expect(spyRef).toHaveBeenCalled();
+        expect(spyChild).toHaveBeenCalledWith(path);
+        expect(spyRemove).toHaveBeenCalled();
+
+        done();
+      });
+    });
+  });
+
+  describe("findMeterById()", () => {
+    let subscription: Subscription | null;
+
+    afterEach(() => {
+      if (subscription) {
+        subscription.unsubscribe();
+        subscription = null;
+      }
+    });
+
+    it("finds meter", (done) => {
+      const meterRef: any = {
+        orderByChild: function(meter_id) {
+          return this;
+        },
+        equalTo: function() {
+          return this;
+        },
+        once: function(value) {
+          return Promise.resolve({
+            val: () => {
+              return { guid: "guid1" };
+            }
+          });
+        }
+      };
+      const spyRef = spyOn(dbProvider as any, "dbRef").and.returnValue(meterRef);
+      const spyOrderByChild = spyOn(meterRef, "orderByChild").and.callThrough();
+      const spyEqualTo = spyOn(meterRef, "equalTo").and.callThrough();
+      const spyOnce = spyOn(meterRef, "once").and.callThrough();
+
+      subscription = dbProvider.findMeterById("id").subscribe(data => {
+        expect(data).toEqual("guid");
+        expect(spyRef).toHaveBeenCalled();
+        expect(spyOrderByChild).toHaveBeenCalledWith("meter_id");
+        expect(spyEqualTo).toHaveBeenCalledWith("id");
+        expect(spyOnce).toHaveBeenCalledWith("value");
+
+        done();
+      });
+    });
+  });
+
 });

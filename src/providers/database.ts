@@ -380,15 +380,19 @@ export class DatabaseProvider {
 
   public findMeterById(meterId: string): Observable<any> {
     return Observable.create(observer => {
-      this.dbRef(databasePaths.meters).orderByChild("meter_id").equalTo(meterId).once("value").then((snapshot) => {
-        const meterGuidObj = snapshot.val();
+      this.dbRef(databasePaths.meters)
+        .orderByChild("meter_id")
+        .equalTo(meterId)
+        .once("value")
+        .then((snapshot) => {
+          const meterGuidObj = snapshot.val();
 
-        if (meterGuidObj) {
-          const meterGuid = Object.keys(meterGuidObj)[0];
-          observer.next(meterGuid);
-        } else {
-          observer.next(null);
-        }
+          if (meterGuidObj) {
+            const meterGuid = Object.keys(meterGuidObj)[0];
+            observer.next(meterGuid);
+          } else {
+            observer.next(null);
+          }
       }, error => {
         observer.error(error);
       });
