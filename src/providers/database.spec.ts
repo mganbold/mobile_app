@@ -296,6 +296,31 @@ describe("app/providers/database", () => {
         done();
       });
     });
+
+    it("catches error", (done) => {
+      const meterRef: any = {
+        orderByChild: function(meter_id) {
+          return this;
+        },
+        equalTo: function() {
+          return this;
+        },
+        once: function(value) {
+          return Promise.reject(new Error("err"));
+        }
+      };
+      const spyRef = spyOn(dbProvider as any, "dbRef").and.returnValue(meterRef);
+
+      subscription = dbProvider.findMeterById("id").subscribe(data => {
+        // placeholder to appease compiler
+        const test = 100;
+      }, error => {
+        expect(error).toEqual(new Error("err"));
+        expect(spyRef).toHaveBeenCalled();
+
+        done();
+      });
+    });
   });
 
 });
