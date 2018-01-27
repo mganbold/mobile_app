@@ -3,6 +3,7 @@ import { IMeter, IUser } from "../../interfaces";
 
 export const TRIGGER_LOAD_METERS: string = "[Meter] TRIGGER LOAD METERS";
 export const LOAD_METERS: string = "[Meter] LOAD METERS";
+export const LOAD_METER: string = "[Meter] LOAD METER";
 
 export const ADD_METERS: string = "[Meter] ADD_METERS";
 export const ADD_METER: string = "[Meter] ADD_METER";
@@ -30,6 +31,15 @@ export class LoadMeters implements Action {
 	public payload: IUser;
 
 	constructor(private _payload: IUser) {
+		this.payload = _payload;
+	}
+}
+
+export class LoadMeter implements Action {
+	public readonly type = LOAD_METER;
+	public payload: { meters: IMeter[], user: IUser };
+
+	constructor(private _payload: { meters: IMeter[], user: IUser }) {
 		this.payload = _payload;
 	}
 }

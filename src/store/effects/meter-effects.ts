@@ -17,6 +17,7 @@ import { environment } from "../../environments";
 import { CostHelper } from "../../helpers";
 import {
   LOAD_METERS,
+  LOAD_METER,
   TRIGGER_ADD_METER,
   TRIGGER_REMOVE_METER,
   TRIGGER_LOAD_METERS,
@@ -28,6 +29,7 @@ import {
   AddMeters,
   AddMeterGuid,
   LoadMeters,
+  LoadMeter,
   TriggerUpdateMeterReads,
   UpdateUser,
   UpdateMeter
@@ -132,38 +134,68 @@ export class MeterEffects {
         Observable.of(updatedUser)
       ]);
     })
-    .switchMap((values: any[]) => {
+    .flatMap((values: any[]) => {
       const [ meters = [], user ] = values;
 
+      // const newMeters = [meters[0]];
+
+      // Load one meter at a time.
+      // return meters.map(meter => {
+      //   return new LoadMeter({ meter, user });
+      // });
+      return [
+        new LoadMeter({ meters, user })
+      ];
+    });
+
+  @Effect()
+  public loadMeterData$ = this._actions$
+    .ofType(LOAD_METER)
+    .map((action: any) => action.payload)
+    .switchMap(data => {
+      const { meters = [], user } = data;
+      const lastMeter = meters.length ? meters[meters.length - 1] : null;
+      const remainingMeters = meters.filter(meter => meter._guid !== lastMeter._guid);
+
       return Observable.combineLatest([
-        this._db.getReadsForMeters(meters),
-        Observable.of(user)
+        lastMeter ? this._db.getReadsForMeters([lastMeter]) : Observable.of(null),
+        Observable.of(user),
+        Observable.of(remainingMeters)
       ]);
     })
     .switchMap((values: any[]) => {
-      const [ meters = [], user ] = values;
+      const [ meter, user, meters ] = values;
 
       return Observable.combineLatest([
-        this._db.getProviderForMeters(meters),
-        Observable.of(user)
+        meter ? this._db.getProviderForMeters([meter]) : Observable.of(null),
+        Observable.of(user),
+        Observable.of(meters)
       ]);
     })
     .flatMap((values: any[]) => {
-      const [ meters = [], user ] = values;
+      const [ meter = null, user, meters = [] ] = values;
+
+      if (meter === null || !meters.length) {
+        return [new AddMeter(null)];
+      }
 
       // Calculates actual cost and usage.
       const newMeters = meters.length ? CostHelper.calculateCostAndUsageForMeters(meters) : [];
 
       // Store meter data locally by uid as key.
-      this._storage.set(user.uid, {
-        meters: newMeters,
-        lastUpdatedDate: new Date()
-      });
+      // this._storage.set(user.uid, {
+      //   meters: newMeters,
+      //   lastUpdatedDate: new Date()
+      // });
 
       // Dispatch actions to update the store.
       return [
         // Add meters to store.
-        new AddMeters(newMeters),
+        // new AddMeters(newMeters),
+        new AddMeter(newMeters[0]),
+
+        // Dispatch the same action.
+        new LoadMeter({ meters, user }),
 
         // Update user in store
         new UpdateUser(user)

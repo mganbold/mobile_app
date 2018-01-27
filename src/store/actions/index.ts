@@ -21,6 +21,7 @@ export {
   AddMeterGuid,
   UpdateMeter,
   LoadMeters,
+  LoadMeter,
 
   TriggerAddMeter,
   TriggerRemoveMeter,
@@ -41,7 +42,8 @@ export {
   REMOVE_METER,
   ADD_METER_GUID,
   UPDATE_METER,
-  LOAD_METERS
+  LOAD_METERS,
+  LOAD_METER
 } from "./meter-actions";
 
 export {
