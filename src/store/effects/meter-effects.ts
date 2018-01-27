@@ -10,6 +10,8 @@ import "rxjs/add/operator/switchMap";
 import "rxjs/add/observable/combineLatest";
 import "rxjs/add/observable/fromPromise";
 
+import { StoreServices } from "../../store/services";
+
 import { DatabaseProvider } from "../../providers";
 import { IMeter, IUser } from "../../interfaces";
 import { environment } from "../../environments";
@@ -134,68 +136,72 @@ export class MeterEffects {
         Observable.of(updatedUser)
       ]);
     })
-    .flatMap((values: any[]) => {
+    .map((values: any[]) => {
       const [ meters = [], user ] = values;
 
-      // const newMeters = [meters[0]];
-
       // Load one meter at a time.
-      // return meters.map(meter => {
-      //   return new LoadMeter({ meter, user });
-      // });
-      return [
-        new LoadMeter({ meters, user })
-      ];
+      return new LoadMeter({ meters, user });
     });
 
+  /**
+   * Loads meters one at a time.
+   *
+   * @memberof MeterEffects
+   */
   @Effect()
-  public loadMeterData$ = this._actions$
+  public loadOneMeterAtATime$ = this._actions$
     .ofType(LOAD_METER)
     .map((action: any) => action.payload)
     .switchMap(data => {
       const { meters = [], user } = data;
-      const lastMeter = meters.length ? meters[meters.length - 1] : null;
-      const remainingMeters = meters.filter(meter => meter._guid !== lastMeter._guid);
+      const firstMeter = meters.length ? meters[0] : null;
+      const remainingMeters = meters.slice(1);
 
       return Observable.combineLatest([
-        lastMeter ? this._db.getReadsForMeters([lastMeter]) : Observable.of(null),
+        firstMeter ? this._db.getReadsForMeters([firstMeter]) : Observable.of(null),
         Observable.of(user),
         Observable.of(remainingMeters)
       ]);
     })
     .switchMap((values: any[]) => {
-      const [ meter, user, meters ] = values;
+      const [ meter, user, remainingMeters ] = values;
+      const activeMeter = meter && meter.length ? meter[0] : null;
 
       return Observable.combineLatest([
-        meter ? this._db.getProviderForMeters([meter]) : Observable.of(null),
+        activeMeter ? this._db.getProviderForMeters([activeMeter]) : Observable.of(null),
         Observable.of(user),
-        Observable.of(meters)
+        Observable.of(remainingMeters)
       ]);
     })
     .flatMap((values: any[]) => {
-      const [ meter = null, user, meters = [] ] = values;
+      const [ meter, user, remainingMeters ] = values;
+      const activeMeter = meter && meter.length ? meter[0] : null;
 
-      if (meter === null || !meters.length) {
-        return [new AddMeter(null)];
+      if (!remainingMeters.length && !activeMeter) {
+        // Store meter data locally by uid as key.
+        this._storeServices.selectMeters().take(1).subscribe(data => {
+          this._storage.set(user.uid, {
+            meters: data,
+            lastUpdatedDate: new Date()
+          });
+        });
+
+        // At this point, all meters are loaded.
+        return [ new AddMeter(null) ];
       }
 
       // Calculates actual cost and usage.
-      const newMeters = meters.length ? CostHelper.calculateCostAndUsageForMeters(meters) : [];
-
-      // Store meter data locally by uid as key.
-      // this._storage.set(user.uid, {
-      //   meters: newMeters,
-      //   lastUpdatedDate: new Date()
-      // });
+      const newMeter: IMeter = activeMeter
+        ? CostHelper.calculateCostAndUsageForMeters([activeMeter])[0]
+        : {} as IMeter;
 
       // Dispatch actions to update the store.
       return [
-        // Add meters to store.
-        // new AddMeters(newMeters),
-        new AddMeter(newMeters[0]),
+        // Add meter to store.
+        new AddMeter(newMeter),
 
         // Dispatch the same action.
-        new LoadMeter({ meters, user }),
+        new LoadMeter({ meters: remainingMeters, user }),
 
         // Update user in store
         new UpdateUser(user)
@@ -290,6 +296,7 @@ export class MeterEffects {
     private readonly _actions$: Actions,
     private readonly _db: DatabaseProvider,
     private readonly _storage: Storage,
-    private _toastCtrl: ToastController
+    private _toastCtrl: ToastController,
+    private readonly _storeServices: StoreServices,
   ) { }
 }

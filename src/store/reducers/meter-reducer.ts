@@ -18,6 +18,9 @@ export function meterReducer(state = { data: [], loading: false}, action): any {
 		case ActionTypes.ADD_METERS:
 	    return Object.assign({}, state, { data: action.payload, loading: false });
 		case ActionTypes.ADD_METER:
+			if (!action.payload) {
+				return state;
+			}
 			return Object.assign({}, state, { data: state.data.concat(action.payload), loading: false });
 		case ActionTypes.REMOVE_METER:
 			const meterToRemove = action.payload;
