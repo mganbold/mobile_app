@@ -43,18 +43,19 @@ export class DatabaseProvider {
    */
   public getOrgPathForUser(uid: string): Observable<string> {
     return Observable.create(observer => {
-      return this.dbRef(databasePaths.users).child(uid).once("value").then(snapshot => {
-        const { orgs = null } = snapshot.val();
+      return this.dbRef(databasePaths.users)
+        .child(uid)
+        .on("value", snapshot => {
+          if (snapshot) {
+            const { orgs = null } = snapshot.val();
 
-        if (orgs && !Array.isArray(orgs)) {
-          observer.next(orgs.path);
-        } else {
-          observer.next(orgs[0].path);
-        }
-      })
-      .catch(error => {
-        observer.error(error);
-      });
+            if (orgs && !Array.isArray(orgs)) {
+              observer.next(orgs.path);
+            } else {
+              observer.next(orgs[0].path);
+            }
+          }
+        });
     });
   }
 
@@ -68,7 +69,10 @@ export class DatabaseProvider {
    */
   public getMetersForOrg(orgPath: string): Observable<IMeter[]> {
     return Observable.create(observer => {
-      return this.dbRef(databasePaths.orgs).child(orgPath).once("value").then(snapshot => {
+      return this.dbRef(databasePaths.orgs)
+        .child(orgPath)
+        .once("value")
+        .then(snapshot => {
         let meters: IMeter[] = [];
 
         snapshot.forEach(child => {
@@ -171,14 +175,15 @@ export class DatabaseProvider {
    */
   private _getProviderForMeter(providerPath: string): Observable<any> {
     return Observable.create(observer => {
-      return this.dbRef(databasePaths.providers).child(providerPath).once("value").then(snapshot => {
-        const providerData = snapshot.val();
+      return this.dbRef(databasePaths.providers)
+        .child(providerPath)
+        .on("value", snapshot => {
+          if (snapshot) {
+            const providerData = snapshot.val();
 
-        observer.next(providerData);
-      })
-      .catch(error => {
-        observer.error(error);
-      });
+            observer.next(providerData);
+          }
+        });
     });
   }
 
@@ -207,21 +212,19 @@ export class DatabaseProvider {
         .orderByKey()
         .startAt(startAt)
         .endAt(endAt)
-        .once("value")
-        .then(snapshot => {
-          const data = snapshot.val();
-          let reads = [];
+        .on("value", snapshot => {
+          if (snapshot) {
+            const data = snapshot.val();
+            let reads = [];
 
-          if (data) {
-            reads = Object.keys(data).map(key => {
-              return { date: key, total: data[key].total };
-            });
+            if (data) {
+              reads = Object.keys(data).map(key => {
+                return { date: key, total: data[key].total };
+              });
+            }
+
+            observer.next(reads);
           }
-
-          observer.next(reads);
-        })
-        .catch(error => {
-          observer.error(error);
         });
     });
   }
@@ -232,23 +235,21 @@ export class DatabaseProvider {
       .child(meterGuid)
       .child(`read_summaries/${timeSpan}`)
       .orderByKey()
-      .once("value")
-      .then(snapshot => {
-        const data = snapshot.val();
-        let reads = [];
+      .on("value", snapshot => {
+        if (snapshot) {
+          const data = snapshot.val();
+          let reads = [];
 
-        if (data) {
-          reads = Object.keys(data).map(key => {
-            return {
-              date: new Date(data[key].lastReadTime),
-              line1: data[key].delta
-            };
-          });
+          if (data) {
+            reads = Object.keys(data).map(key => {
+              return {
+                date: new Date(data[key].lastReadTime),
+                line1: data[key].delta
+              };
+            });
+          }
+          observer.next(reads);
         }
-        observer.next(reads);
-      })
-      .catch(error => {
-        observer.error(error);
       });
     });
   }
@@ -265,21 +266,18 @@ export class DatabaseProvider {
         .orderByKey()
         .startAt(startAt)
         .endAt(endAt)
-        .once("value")
-        .then(snapshot => {
-          const data = snapshot.val();
-          let reads = [];
+        .on("value", snapshot => {
+          if (snapshot) {
+            const data = snapshot.val();
+            let reads = [];
 
-          if (data) {
-            reads = Object.keys(data).map(key => {
-              return { date: key, total: data[key].total };
-            });
+            if (data) {
+              reads = Object.keys(data).map(key => {
+                return { date: key, total: data[key].total };
+              });
+            }
+            observer.next(reads);
           }
-
-          observer.next(reads);
-        })
-        .catch(error => {
-          observer.error(error);
         });
     });
   }
@@ -296,20 +294,18 @@ export class DatabaseProvider {
         .orderByKey()
         .startAt(startAt)
         .endAt(endAt)
-        .once("value")
-        .then(snapshot => {
-          const data = snapshot.val();
-          let reads = [];
+        .on("value", snapshot => {
+          if (snapshot) {
+            const data = snapshot.val();
+            let reads = [];
 
-          if (data) {
-            reads = Object.keys(data).map(key => {
-              return { date: key, delta: data[key].delta };
-            });
+            if (data) {
+              reads = Object.keys(data).map(key => {
+                return { date: key, delta: data[key].delta };
+              });
+            }
+            observer.next(reads);
           }
-          observer.next(reads);
-        })
-        .catch(error => {
-          observer.error(error);
         });
     });
   }
@@ -383,19 +379,18 @@ export class DatabaseProvider {
       this.dbRef(databasePaths.meters)
         .orderByChild("meter_id")
         .equalTo(meterId)
-        .once("value")
-        .then((snapshot) => {
-          const meterGuidObj = snapshot.val();
+        .on("value", snapshot => {
+          if (snapshot) {
+            const meterGuidObj = snapshot.val();
 
-          if (meterGuidObj) {
-            const meterGuid = Object.keys(meterGuidObj)[0];
-            observer.next(meterGuid);
-          } else {
-            observer.next(null);
+            if (meterGuidObj) {
+              const meterGuid = Object.keys(meterGuidObj)[0];
+              observer.next(meterGuid);
+            } else {
+              observer.next(null);
+            }
           }
-      }, error => {
-        observer.error(error);
-      });
+        });
     });
   }
 
@@ -436,26 +431,24 @@ export class DatabaseProvider {
         .orderByKey()
         .startAt(startAt)
         .endAt(endAt)
-        .once("value")
-        .then(snapshot => {
-          const ranks = snapshot.val();
-          const totals = [];
-          let sum = 0;
+        .on("value", snapshot => {
+          if (snapshot) {
+            const ranks = snapshot.val();
+            const totals = [];
+            let sum = 0;
 
-          if (ranks) {
-            Object.keys(ranks).forEach(key => {
-              totals.push(ranks[key]);
-            });
+            if (ranks) {
+              Object.keys(ranks).forEach(key => {
+                totals.push(ranks[key]);
+              });
 
-            sum = totals.reduce((a, b) => {
-              return a + b.total;
-            }, 0);
+              sum = totals.reduce((a, b) => {
+                return a + b.total;
+              }, 0);
+            }
+
+            observer.next(sum > 0 ? Math.round(sum / totals.length) : 0);
           }
-
-          observer.next(sum > 0 ? Math.round(sum / totals.length) : 0);
-        })
-        .catch(error => {
-          observer.error(error);
         });
     });
   }
